@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# dotenv (your API keys & DB connection string)
+.env
+*.env
+
+# VSCode / PyCharm
+.vsco
