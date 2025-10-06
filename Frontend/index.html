@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI → SQL → Result</title>
+  <style>
+    :root{
+      --bg: #0b0d10;
+      --card: #10151c;
+      --muted:#94a3b8;
+      --text:#e5e7eb;
+      --accent:#4f46e5;
+      --accent-2:#06b6d4;
+      --border:#1f2733;
+      --ok:#16a34a;
+      --err:#ef4444;
+      --shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    [data-theme="light"]{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --shadow: 0 10px 25px rgba(0,0,0,.08);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:linear-gradient(180deg, var(--bg), #0e1116);
+      min-height:100vh; color:var(--text); font:14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background-attachment: fixed;
+    }
+    .wrap{max-width:1000px;margin:40px auto;padding:0 16px}
+    header{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px
+    }
+    .brand{
+      display:flex;align-items:center;gap:12px
+    }
+    .logo{
+      width:40px;height:40px;border-radius:12px;
+      background: conic-gradient(from 180deg, var(--accent), var(--accent-2));
+      box-shadow: 0 8px 18px rgba(79,70,229,.35);
+    }
+    h1{font-size:20px;margin:0}
+    .muted{color:var(--muted)}
+
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); overflow:hidden
+    }
+    .card .head{
+      display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)
+    }
+    .chips{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+    .chip{
+      padding:8px 10px;border:1px solid var(--border);border-radius:999px;cursor:pointer;
+      background:transparent;color:var(--muted);transition:.15s
+    }
+    .chip:hover{color:var(--text);border-color:var(--accent)}
+    .body{padding:16px}
+    .input-row{display:flex;gap:12px;align-items:stretch}
+    textarea{
+      flex:1; resize:vertical; min-height:56px; max-height:200px;
+      padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:transparent;color:var(--text);
+      outline: none;
+    }
+    .btn{
+      border:0;border-radius:12px; padding:12px 16px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:10px;
+      background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:white; box-shadow: 0 8px 18px rgba(6,182,212,.25);
+      transition: transform .05s ease;
+    }
+    .btn:active{transform: translateY(1px)}
+    .btn.secondary{
+      background:transparent;color:var(--muted);border:1px solid var(--border);box-shadow:none
+    }
+    .spinner{
+      width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .split{
+      display:grid;grid-template-columns:1fr;gap:14px;padding:16px
+    }
+    @media (min-width: 840px){ .split{ grid-template-columns: 1fr 1.2fr } }
+
+    .panel{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    .panel .title{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);background:linear-gradient(180deg, rgba(255,255,255,.02), transparent)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:13px}
+    pre{margin:0;padding:12px;max-height:320px;overflow:auto}
+
+    .copy{background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--muted)}
+    .copy:hover{color:var(--text);border-color:var(--accent)}
+
+    .tbl-box{max-height:360px;overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      position:sticky;top:0;background:var(--card);z-index:1;border-bottom:1px solid var(--border)
+    }
+    th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left}
+    tbody tr:nth-child(odd){background:rgba(255,255,255,.02)}
+
+    .toast{
+      position:fixed;right:16px;bottom:16px;background:var(--card);color:var(--text);
+      border:1px solid var(--border);border-left:4px solid var(--ok);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);
+      opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none
+    }
+    .toast.show{opacity:1;transform:translateY(0)}
+    .toast.err{border-left-color:var(--err)}
+
+    .toggle{
+      border:1px solid var(--border);border-radius:999px;padding:6px 10px;background:transparent;color:var(--muted);cursor:pointer
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Ask your database</h1>
+          <div class="muted">Natural language → SQL → Results</div>
+        </div>
+      </div>
+      <button id="themeBtn" class="toggle" title="Toggle theme">🌙</button>
+    </header>
+
+    <section class="card">
+      <div class="head">
+        <div class="muted">Type a question or pick a suggestion</div>
+        <div class="muted">Endpoint: <code class="mono">/ask</code></div>
+      </div>
+
+      <div class="chips" id="chips">
+        <button class="chip">Top 5 products by sales</button>
+        <button class="chip">Total revenue by category</button>
+        <button class="chip">Products under 20 sorted by price</button>
+        <button class="chip">Show units_sold desc limit 5</button>
+      </div>
+
+      <div class="body">
+        <div class="input-row">
+          <textarea id="question" placeholder="e.g., Top 5 products by sales"></textarea>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button id="askBtn" class="btn">
+              <span class="btn-label">Ask</span>
+              <span class="spinner" style="display:none"></span>
+            </button>
+            <button id="clearBtn" class="btn secondary">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <div class="title">
+            <strong>Generated SQL</strong>
+            <button id="copyBtn" class="copy">Copy</button>
+          </div>
+          <pre id="sql" class="mono">—</pre>
+        </div>
+
+        <div class="panel">
+          <div class="title"><strong>Rows</strong><span class="muted" id="countLbl"></span></div>
+          <div class="tbl-box" id="rowsBox">
+            <div class="muted" style="padding:12px">No results yet.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast">Done</div>
+
+  <script>
+ // const API_URL = "/ask";
+const API_URL = "http://127.0.0.1:8000/ask";
+
+    const qEl = document.getElementById("question");
+    const askBtn = document.getElementById("askBtn");
+    const askSpinner = askBtn.querySelector(".spinner");
+    const askLabel = askBtn.querySelector(".btn-label");
+    const clearBtn = document.getElementById("clearBtn");
+    const sqlEl = document.getElementById("sql");
+    const rowsBox = document.getElementById("rowsBox");
+    const countLbl = document.getElementById("countLbl");
+    const toast = document.getElementById("toast");
+    const chips = document.getElementById("chips");
+    const copyBtn = document.getElementById("copyBtn");
+    const themeBtn = document.getElementById("themeBtn");
+
+    // Theme
+    themeBtn.addEventListener("click", () => {
+      const root = document.documentElement;
+      const current = root.getAttribute("data-theme");
+      const next = current === "light" ? "dark" : "light";
+      root.setAttribute("data-theme", next);
+      themeBtn.textContent = next === "light" ? "🌙" : "☀️";
+    });
+
+    // Chips
+    chips.addEventListener("click", (e)=>{
+      if(e.target.classList.contains("chip")){
+        qEl.value = e.target.textContent;
+        qEl.focus();
+      }
+    });
+
+    // Ask
+    askBtn.addEventListener("click", ask);
+    qEl.addEventListener("keydown", (e)=>{
+      if((e.ctrlKey || e.metaKey) && e.key === "Enter") ask();
+    });
+
+    async function ask(){
+      const question = qEl.value.trim();
+      if(!question){ ping("Please enter a question.", true); qEl.focus(); return; }
+
+      setLoading(true);
+      resetOutputs();
+
+      try{
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+
+        if(!res.ok){
+          sqlEl.textContent = "—";
+          renderRows([]);
+          ping(data?.error || "Request failed", true);
+          return;
+        }
+
+        sqlEl.textContent = data.sql || "—";
+        renderRows(data.rows || []);
+        ping("Done");
+      }catch(err){
+        ping(err?.message || String(err), true);
+      }finally{
+        setLoading(false);
+      }
+    }
+
+    // Clear
+    clearBtn.addEventListener("click", ()=>{
+      qEl.value = "";
+      resetOutputs();
+      qEl.focus();
+    });
+
+    // Copy SQL
+    copyBtn.addEventListener("click", async ()=>{
+      const text = sqlEl.textContent.trim();
+      if(!text || text === "—"){ ping("Nothing to copy", true); return; }
+      try{
+        await navigator.clipboard.writeText(text);
+        ping("SQL copied");
+      }catch{ ping("Copy failed", true); }
+    });
+
+    function resetOutputs(){
+      sqlEl.textContent = "—";
+      renderRows([]);
+    }
+
+    function setLoading(on){
+      askBtn.disabled = on;
+      askSpinner.style.display = on ? "inline-block" : "none";
+      askLabel.textContent = on ? "Working…" : "Ask";
+    }
+
+    function ping(msg, isErr=false){
+      toast.textContent = msg;
+      toast.classList.toggle("err", !!isErr);
+      toast.classList.add("show");
+      setTimeout(()=>toast.classList.remove("show"), 1800);
+    }
+
+    function renderRows(rows){
+      rowsBox.innerHTML = "";
+      countLbl.textContent = rows.length ? `${rows.length} row(s)` : "";
+      if(!rows.length){
+        rowsBox.innerHTML = "<div class='muted' style='padding:12px'>No rows.</div>";
+        return;
+      }
+      const cols = Object.keys(rows[0]);
+
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      const trH = document.createElement("tr");
+      cols.forEach(c=>{
+        const th = document.createElement("th");
+        th.textContent = c;
+        trH.appendChild(th);
+      });
+      thead.appendChild(trH);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      rows.forEach(r=>{
+        const tr = document.createElement("tr");
+        cols.forEach(c=>{
+          const td = document.createElement("td");
+          const v = r[c];
+          td.textContent = v === null || v === undefined ? "" : v;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      rowsBox.appendChild(table);
+    }
+  </script>
+</body>
+</html>

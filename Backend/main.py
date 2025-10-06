@@ -11,7 +11,9 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
 # Flask
+from flask_cors import CORS
 app = Flask(__name__)
+CORS(app)  #
 
 # DB
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
